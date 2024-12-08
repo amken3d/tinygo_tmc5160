@@ -1,5 +1,9 @@
 package tinygo_tmc5160
 
+import "machine"
+
+const maxVMAX = 8388096
+
 // PowerStageParameters represents the power stage parameters
 type PowerStageParameters struct {
 	drvStrength uint8
@@ -58,23 +62,25 @@ const (
 	DefaultIPeak     float32      = 2.0
 	DefaultRSense    float32      = 0.1
 	DefaultFclk      uint8        = 12
+	DefaultStep_256               = 256
 )
 
 type Stepper struct {
 	Angle       StepperAngle
 	GearRatio   float32
-	VelocitySPS float32 // Desired velocity in RPM
+	VelocitySPS float32 //  Velocity in Steps per sec
 	VSupply     float32
 	RCoil       float32
 	LCoil       float32
 	IPeak       float32
 	RSense      float32
 	MSteps      Microstepping
-	Fclk        uint8
+	Fclk        uint8 //Clock in Mhz
+
 }
 
-// NewStepper function initializes a Stepper with default values
-func NewStepper() Stepper {
+// NewStepper function initializes a Stepper with default values used for testing
+func NewDefaultStepper() Stepper {
 	return Stepper{
 		Angle:       StepAngle_1_8, // Default to 1.8 degrees
 		GearRatio:   1.0,           // Default to no reduction (1:1)
@@ -85,10 +91,54 @@ func NewStepper() Stepper {
 		IPeak:       2.0,           // Default peak current (2A)
 		RSense:      0.1,           // Default sense resistance (0.1 ohms)
 		MSteps:      Step_16,       // Default 16 Microsteps
+		Fclk:        DefaultFclk,
 	}
 }
 
-//var _fclk uint32
+// NewStepper initializes a Stepper with user-defined values
+func NewStepper(angle StepperAngle, gearRatio, velocitySPS, vSupply, rCoil, lCoil, iPeak, rSense float32, mSteps Microstepping, fclk uint8) Stepper {
+	return Stepper{
+		Angle:       angle,       // User-defined stepper angle (e.g., StepAngle_1_8)
+		GearRatio:   gearRatio,   // User-defined gear ratio
+		VelocitySPS: velocitySPS, // User-defined velocity in steps per second
+		VSupply:     vSupply,     // User-defined supply voltage
+		RCoil:       rCoil,       // User-defined coil resistance
+		LCoil:       lCoil,       // User-defined coil inductance
+		IPeak:       iPeak,       // User-defined peak current
+		RSense:      rSense,      // User-defined sense resistance
+		MSteps:      mSteps,      // User-defined microstepping setting
+		Fclk:        fclk,        // User-defined clock frequency in MHz
+
+	}
+}
+
+type TMC5160 struct {
+	spi     machine.SPI
+	csPin   machine.Pin
+	stepper Stepper
+}
+
+func NewTMC5160(spi machine.SPI, csPin machine.Pin, stepper Stepper) *TMC5160 {
+	return &TMC5160{
+		spi:     spi,
+		csPin:   csPin,
+		stepper: stepper,
+	}
+}
+
+// Enable Setup configures the TMC429 and SPI communication
+func (t *TMC5160) Enable() {
+	// Configure CS pin
+	t.csPin.Configure(machine.PinConfig{Mode: machine.PinOutput})
+	t.csPin.Low()
+}
+
+// Disable Setup configures the TMC429 and SPI communication
+func (t *TMC5160) Disable() {
+	// Configure CS pin
+	t.csPin.Configure(machine.PinConfig{Mode: machine.PinOutput})
+	t.csPin.High()
+}
 
 //
 //// Begin initializes the TMC5160 driver with power and motor parameters
@@ -194,10 +244,10 @@ func NewStepper() Stepper {
 //	// Optionally update the current ramp mode variable
 //	_currentRampMode = mode
 //}
-
-// setMaxSpeed sets the maximum speed to 0 (placeholder function)
-func setMaxSpeed(speed uint32) {
-	// This is a placeholder function that sets the speed
-	// Implement the actual logic to set the maximum speed register value
-	println("Max Speed set to:", speed)
-}
+//
+//// setMaxSpeed sets the maximum speed to 0 (placeholder function)
+//func setMaxSpeed(speed uint32) {
+//	// This is a placeholder function that sets the speed
+//	// Implement the actual logic to set the maximum speed register value
+//	println("Max Speed set to:", speed)
+//}

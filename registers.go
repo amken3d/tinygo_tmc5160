@@ -2,6 +2,31 @@ package tinygo_tmc5160
 
 import "math"
 
+// RegisterComm defines an interface for reading from and writing to hardware registers.
+type RegisterComm interface {
+	ReadRegister(register uint8, driverIndex uint8) (uint32, error)
+	WriteRegister(register uint8, value uint32, driverIndex uint8) error
+}
+
+// ReadRegister function using the register constants
+func ReadRegister(comm RegisterComm, driverIndex uint8, register uint8) (uint32, error) {
+	// Read the register value using the comm interface
+
+	value, err := comm.ReadRegister(register, driverIndex)
+	println("Request read ", register, driverIndex, value)
+	if err != nil {
+		return 0, err
+	}
+	return value, nil
+}
+
+// WriteRegister function using the register constants
+func WriteRegister(comm RegisterComm, register uint8, driverIndex uint8, value uint32) error {
+	// Write the value to the register using the comm interface
+	return comm.WriteRegister(register, value, driverIndex)
+}
+
+// Register and methods to pack and unpack
 // Base Register struct
 type Register struct {
 	RegisterAddr uint8

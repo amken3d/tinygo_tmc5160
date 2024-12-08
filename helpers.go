@@ -1,69 +1,47 @@
 package tinygo_tmc5160
 
 import (
-	math "github.com/orsinium-labs/tinymath"
-	"log"
+	"github.com/orsinium-labs/tinymath"
 )
 
-// Define constants
-const _uStepCount uint32 = 256
-const _motorAngle float32 = 1.8
-
-var _ustepPerRev = uint32(360/_motorAngle) * _uStepCount
-var _maxUstepPerTref = _ustepPerRev * _tRef
-
-const _fclkMhz uint32 = 12 // Example clock frequency (12 MHz)
-var _tRef = 16777216 / _fclkMhz
-
-func roundFloat(val float32, precision uint) float32 {
-	ratio := math.PowF(10, float32(precision))
-	return math.Round(val*ratio) / ratio
+// VelocityToVMAX calculates the VMAX register value from the current stepper velocity which is  in microsteps per tRef (i.e 1/clock speed)
+func (stepper *Stepper) CurrentVelocityToVMAX() uint32 {
+	tref := float32(16777216) / (float32(stepper.Fclk) * 1000000)
+	r := stepper.VelocitySPS * stepper.GearRatio * float32(tref)
+	return constrain(uint32(r), 0, maxVMAX) // VMAX register value cannot exceed maxVMAX
+}
+func (stepper *Stepper) DesiredVelocityToVMAX(v float32) uint32 {
+	tref := 16777216 / (float32(stepper.Fclk) * 1000000)
+	r := tinymath.Round(v * stepper.GearRatio * tref)
+	return constrain(uint32(r), 0, maxVMAX) // VMAX register value cannot exceed maxVMAX
 }
 
-func UstepPerSec(speedInternal uint32) uint32 {
-	return speedInternal / _tRef
-}
+func (stepper *Stepper) DesiredAccelToAMAX(dacc float32, dVel float32) uint32 {
+	dVelToVMAX := stepper.DesiredVelocityToVMAX(dVel)
+	_a := uint64(dVelToVMAX) * 131072
+	_b := float32(_a) / dacc
+	_c := _b / float32(uint32(stepper.Fclk)*1000000)
+	return uint32(_c)
 
-// speedToHz function using Stepper struct
-func (stepper *Stepper) speedToHz(speedInternal uint32) float32 {
-	// Check if the input speed is within the valid range, use VMax from the Stepper struct
-	if speedInternal > uint32(715828) { // Limit speed based on your conditions
-		return 0.0 // Return 0 for invalid speeds (e.g., negative or too large)
-	}
-
-	// Use the GearRatio and Velocity from the Stepper struct for calculation (you can modify this part as needed)
-	log.Printf("Speed: %d, Gear Ratio: %f", speedInternal, stepper.GearRatio)
-	return float32(speedInternal) * float32(_fclkMhz*1000000) / (2 * (1 << 23))
-}
-
-// Convert real-world frequency (Hz) to internal speed (v[5160A]) using the inverse formula
-func speedFromHz(speedHz float32) int32 {
-	if speedHz < 0 {
-		return 0
-	}
-
-	// Applying the inverse formula
-	return int32(speedHz*(2*float32(1<<23))/float32(_fclkMhz*1000000) + 1)
-}
-
-// Convert real-world acceleration (Hz/s) to internal acceleration
-func accelFromHz(accelHz float32) int32 {
-	if accelHz == 0 {
-		return 0
-	}
-
-	// Apply proper scaling for acceleration conversion
-	return int32(accelHz * float32(_fclkMhz*_fclkMhz) * 1000000 / (512.0 * 256.0) / float32(1<<24) * float32(_uStepCount))
 }
 
 // Convert threshold speed (Hz) to internal TSTEP value
-func thrsSpeedToTstep(thrsSpeed uint32) uint32 {
+func (stepper *Stepper) DesiredSpeedToTSTEP(thrsSpeed uint32) uint32 {
 	if thrsSpeed < 0 {
 		return 0
 	}
-	r := (16777216 / thrsSpeed) * (_uStepCount / 256)
-	// Correct scaling for threshold speed
-	return constrain(r, 0, 1048575)
+	_a := stepper.DesiredVelocityToVMAX(float32(thrsSpeed))
+	_b := float32(16777216 / _a)
+	_c := float32(stepper.MSteps) / float32(256)
+	_d := uint32(_b * _c)
+	return constrain(_d, 0, 1048575)
+}
+
+func (stepper *Stepper) VMAXToTSTEP(vmax uint32) uint32 {
+	_b := float32(16777216 / vmax)
+	_c := float32(stepper.MSteps) / float32(256)
+	_d := tinymath.Round(_b * _c)
+	return constrain(uint32(_d), 0, 1048575)
 }
 
 // Constrain function to limit values to a specific range (now works with int32 or uint32)
@@ -74,12 +52,4 @@ func constrain(value, min, max uint32) uint32 {
 		return max
 	}
 	return value
-}
-
-// Function returns the Max Steps per Seconds for a given value in rpm
-func (stepper *Stepper) MaxStepsPerSecond(value float32) {
-	//t := 16777216 / float32(stepper.Fclk)
-	//vmax :=
-	//rps := 16777216
-	return
 }
