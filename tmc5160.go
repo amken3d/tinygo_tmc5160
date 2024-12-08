@@ -30,43 +30,39 @@ const (
 	CounterClockwise
 )
 
-type StepperAngle float32
-type Microstepping uint16
-
 const (
 	// Common stepper motor angles
-	StepAngle_1_8  StepperAngle = 1.8
-	StepAngle_0_9  StepperAngle = 0.9
-	StepAngle_0_72 StepperAngle = 0.72
-	StepAngle_1_2  StepperAngle = 1.2
-	StepAngle_0_48 StepperAngle = 0.48
+	StepAngle_1_8  = 1.8
+	StepAngle_0_9  = 0.9
+	StepAngle_0_72 = 0.72
+	StepAngle_1_2  = 1.2
+	StepAngle_0_48 = 0.48
 
 	// Common microstepping options
-	Step_1   Microstepping = 1
-	Step_2   Microstepping = 2
-	Step_4   Microstepping = 4
-	Step_8   Microstepping = 8
-	Step_16  Microstepping = 16
-	Step_32  Microstepping = 32
-	Step_64  Microstepping = 64
-	Step_128 Microstepping = 128
-	Step_256 Microstepping = 256
+	Step_1   uint8 = 1
+	Step_2   uint8 = 2
+	Step_4   uint8 = 4
+	Step_8   uint8 = 8
+	Step_16  uint8 = 16
+	Step_32  uint8 = 32
+	Step_64  uint8 = 64
+	Step_128 uint8 = 128
 )
 
 const (
-	DefaultAngle     StepperAngle = StepAngle_1_8
-	DefaultGearRatio float32      = 1.0
-	DefaultVSupply   float32      = 12.0
-	DefaultRCoil     float32      = 1.2
-	DefaultLCoil     float32      = 0.005
-	DefaultIPeak     float32      = 2.0
-	DefaultRSense    float32      = 0.1
-	DefaultFclk      uint8        = 12
-	DefaultStep_256               = 256
+	DefaultAngle     float32 = StepAngle_1_8
+	DefaultGearRatio float32 = 1.0
+	DefaultVSupply   float32 = 12.0
+	DefaultRCoil     float32 = 1.2
+	DefaultLCoil     float32 = 0.005
+	DefaultIPeak     float32 = 2.0
+	DefaultRSense    float32 = 0.1
+	DefaultFclk      uint8   = 12
+	DefaultStep_256          = 256
 )
 
 type Stepper struct {
-	Angle       StepperAngle
+	Angle       float32
 	GearRatio   float32
 	VelocitySPS float32 //  Velocity in Steps per sec
 	VSupply     float32
@@ -74,7 +70,7 @@ type Stepper struct {
 	LCoil       float32
 	IPeak       float32
 	RSense      float32
-	MSteps      Microstepping
+	MSteps      uint8
 	Fclk        uint8 //Clock in Mhz
 
 }
@@ -96,7 +92,7 @@ func NewDefaultStepper() Stepper {
 }
 
 // NewStepper initializes a Stepper with user-defined values
-func NewStepper(angle StepperAngle, gearRatio, velocitySPS, vSupply, rCoil, lCoil, iPeak, rSense float32, mSteps Microstepping, fclk uint8) Stepper {
+func NewStepper(angle float32, gearRatio, velocitySPS, vSupply, rCoil, lCoil, iPeak, rSense float32, mSteps uint8, fclk uint8) Stepper {
 	return Stepper{
 		Angle:       angle,       // User-defined stepper angle (e.g., StepAngle_1_8)
 		GearRatio:   gearRatio,   // User-defined gear ratio
