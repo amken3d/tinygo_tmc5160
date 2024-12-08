@@ -13,21 +13,29 @@ func (e CustomError) Error() string {
 
 // SPIComm implements RegisterComm for SPI-based communication
 type SPIComm struct {
-	spi machine.SPI
+	spi    machine.SPI
+	csPins map[uint8]machine.Pin // Map to store CS pin for each TMC5160 by its address
 }
 
 // NewSPIComm creates a new SPIComm instance.
-func NewSPIComm(spi machine.SPI) *SPIComm {
+func NewSPIComm(spi machine.SPI, csPins map[uint8]machine.Pin) *SPIComm {
 	return &SPIComm{
-		spi: spi,
+		spi:    spi,
+		csPins: csPins,
 	}
 }
 
-// Setup initializes the SPI communication with the TMC2209.
+// Setup initializes the SPI communication with the TMC5160 and configures all CS pins.
 func (comm *SPIComm) Setup() error {
 	// Check if SPI is initialized
 	if comm.spi == (machine.SPI{}) {
 		return CustomError("SPI not initialized")
+	}
+
+	// Configure all CS pins (make them output and set them high)
+	for _, csPin := range comm.csPins {
+		csPin.Configure(machine.PinConfig{Mode: machine.PinOutput})
+		csPin.High() // Set all CS pins high initially
 	}
 
 	// Configure the SPI interface with the desired settings
@@ -39,14 +47,24 @@ func (comm *SPIComm) Setup() error {
 		return CustomError("Failed to configure SPI")
 	}
 
-	// No built-in timeout in TinyGo, so timeout will be handled in the read/write methods
 	return nil
 }
 
 // WriteRegister sends a register write command to the TMC5160.
-func (comm *SPIComm) WriteRegister(register uint8, value uint32, driverIndex uint8) error {
+func (comm *SPIComm) WriteRegister(register uint8, value uint32, driverAddress uint8) error {
+	// Assert the chip select pin (set CS low to start communication)
+	csPin, exists := comm.csPins[driverAddress]
+	if !exists {
+		return CustomError("Invalid driver address")
+	}
+	csPin.Low()
+
 	// Pass the register and value to the spiTransfer40 function to write to the device
 	_, err := spiTransfer40(&comm.spi, register, value)
+
+	// Deassert the chip select pin (set CS high to end communication)
+	csPin.High()
+
 	if err != nil {
 		return CustomError("Failed to write register")
 	}
@@ -54,9 +72,20 @@ func (comm *SPIComm) WriteRegister(register uint8, value uint32, driverIndex uin
 }
 
 // ReadRegister sends a register read command to the TMC5160.
-func (comm *SPIComm) ReadRegister(register uint8, driverIndex uint8) (uint32, error) {
+func (comm *SPIComm) ReadRegister(register uint8, driverAddress uint8) (uint32, error) {
+	// Assert the chip select pin (set CS low to start communication)
+	csPin, exists := comm.csPins[driverAddress]
+	if !exists {
+		return 0, CustomError("Invalid driver address")
+	}
+	csPin.Low()
+
 	// Send the register read request and get the response
 	response, err := spiTransfer40(&comm.spi, register, 0)
+
+	// Deassert the chip select pin (set CS high to end communication)
+	csPin.High()
+
 	if err != nil {
 		return 0, CustomError("Failed to read register")
 	}
