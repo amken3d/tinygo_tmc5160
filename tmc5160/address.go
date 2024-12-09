@@ -1,20 +1,20 @@
-package tinygo_tmc5160
+package tmc5160
 
-// TMC2209 Register addresses
+// Driver Register addresses
 const (
-	GCONF         = 0x00 // Global configuration flags
-	GSTAT         = 0x01 // Global status flags
-	IFCNT         = 0x02 // UART transmission counter
-	SLAVECONF     = 0x03 // UART slave configuration
-	IOIN          = 0x04 // Read input / write output pins
-	X_COMPARE     = 0x05 // Position comparison register
-	OTP_PROG      = 0x06 // OTP programming register
-	OTP_READ      = 0x07 // OTP read register
-	FACTORY_CONF  = 0x08 // Factory configuration (clock trim)
-	SHORT_CONF    = 0x09 // Short detector configuration
-	DRV_CONF      = 0x0A // Driver configuration
-	GLOBAL_SCALER = 0x0B // Global scaling of motor current
-	OFFSET_READ   = 0x0C // Offset calibration results
+	GCONF         uint8 = 0x00 // Global configuration flags
+	GSTAT         uint8 = 0x01 // Global status flags
+	IFCNT               = 0x02 // UART transmission counter
+	SLAVECONF           = 0x03 // UART slave configuration
+	IOIN                = 0x04 // Read input / write output pins
+	X_COMPARE           = 0x05 // Position comparison register
+	OTP_PROG            = 0x06 // OTP programming register
+	OTP_READ            = 0x07 // OTP read register
+	FACTORY_CONF        = 0x08 // Factory configuration (clock trim)
+	SHORT_CONF          = 0x09 // Short detector configuration
+	DRV_CONF            = 0x0A // Driver configuration
+	GLOBAL_SCALER       = 0x0B // Global scaling of motor current
+	OFFSET_READ         = 0x0C // Offset calibration results
 
 	/* Velocity dependent driver feature control registers */
 	IHOLD_IRUN = 0x10 // Driver current control

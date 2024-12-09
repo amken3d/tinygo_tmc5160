@@ -1,7 +1,8 @@
-package tinygo_tmc5160
+package tmc5160
 
 import (
 	"github.com/orsinium-labs/tinymath"
+	"golang.org/x/exp/constraints"
 )
 
 // VelocityToVMAX calculates the VMAX register value from the current stepper velocity which is  in microsteps per tRef (i.e 1/clock speed)
@@ -44,8 +45,8 @@ func (stepper *Stepper) VMAXToTSTEP(vmax uint32) uint32 {
 	return constrain(uint32(_d), 0, 1048575)
 }
 
-// Constrain function to limit values to a specific range (now works with int32 or uint32)
-func constrain(value, min, max uint32) uint32 {
+// Constrain function to limit values to a specific range (supports multiple types).
+func constrain[T constraints.Ordered](value, min, max T) T {
 	if value < min {
 		return min
 	} else if value > max {

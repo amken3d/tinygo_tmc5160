@@ -1,11 +1,13 @@
-package tinygo_tmc5160
+//go:build uart
+
+package tmc5160
 
 import (
 	"machine"
 	"time"
 )
 
-// UARTComm implements RegisterComm for UART-based communication with TMC5160.
+// UARTComm implements RegisterComm for UART-based communication with Driver.
 type UARTComm struct {
 	uart    machine.UART
 	address uint8
@@ -19,7 +21,7 @@ func NewUARTComm(uart machine.UART, address uint8) *UARTComm {
 	}
 }
 
-// Setup initializes the UART communication with the TMC5160.
+// Setup initializes the UART communication with the Driver.
 func (comm *UARTComm) Setup() error {
 	// Check if UART is initialized
 	if comm.uart == (machine.UART{}) {
@@ -38,7 +40,7 @@ func (comm *UARTComm) Setup() error {
 	return nil
 }
 
-// WriteRegister sends a register write command to the TMC5160.
+// WriteRegister sends a register write command to the Driver.
 func (comm *UARTComm) WriteRegister(register uint8, value uint32, driverIndex uint8) error {
 	// Prepare the data packet (sync byte + address + register + data + checksum)
 	buffer := []byte{
@@ -58,7 +60,7 @@ func (comm *UARTComm) WriteRegister(register uint8, value uint32, driverIndex ui
 	}
 	buffer[7] = checksum // Set checksum byte
 
-	// Write the data to the TMC5160
+	// Write the data to the Driver
 	done := make(chan error, 1)
 
 	go func() {
@@ -75,7 +77,7 @@ func (comm *UARTComm) WriteRegister(register uint8, value uint32, driverIndex ui
 	}
 }
 
-// ReadRegister sends a register read command to the TMC5160.
+// ReadRegister sends a register read command to the Driver.
 func (comm *UARTComm) ReadRegister(register uint8, driverIndex uint8) (uint32, error) {
 	// Prepare the read command (sync byte + address + register + checksum)
 	var writeBuffer [4]byte

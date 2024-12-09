@@ -1,4 +1,4 @@
-package tinygo_tmc5160
+package tmc5160
 
 const maxVMAX = 8388096
 

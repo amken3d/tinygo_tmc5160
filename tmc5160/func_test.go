@@ -1,4 +1,6 @@
-package tinygo_tmc5160
+//go:build test
+
+package tmc5160
 
 import (
 	"log"

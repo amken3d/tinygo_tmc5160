@@ -1,6 +1,8 @@
-package tinygo_tmc5160
+package tmc5160
 
-import "math"
+import (
+	math "github.com/orsinium-labs/tinymath"
+)
 
 // RegisterComm defines an interface for reading from and writing to hardware registers.
 type RegisterComm interface {
@@ -13,7 +15,6 @@ func ReadRegister(comm RegisterComm, driverIndex uint8, register uint8) (uint32,
 	// Read the register value using the comm interface
 
 	value, err := comm.ReadRegister(register, driverIndex)
-	println("Request read ", register, driverIndex, value)
 	if err != nil {
 		return 0, err
 	}
@@ -1272,26 +1273,74 @@ func (x *XLATCH_Register) Unpack(registerValue uint32) {
 // RAMPMODE_Register struct for RAMPMODE register (2 bits)
 type RAMPMODE_Register struct {
 	Register
-	Value uint8 // 2-bit value
+	mode        RampMode // Mode is now an enum-like type
+	comm        RegisterComm
+	driverIndex uint8
 }
+type RampMode uint8
 
-// NewRAMPMODE creates a new RAMPMODE register instance
-func NewRAMPMODE() *RAMPMODE_Register {
+const (
+	PositioningMode      RampMode = iota // 0
+	VelocityPositiveMode                 // 1
+	VelocityNegativeMode                 // 2
+	HoldMode                             // 3
+)
+
+func NewRAMPMODE(comm RegisterComm, driverIndex uint8) *RAMPMODE_Register {
 	return &RAMPMODE_Register{
 		Register: Register{
 			RegisterAddr: RAMPMODE,
 		},
+		driverIndex: driverIndex,
+		comm:        comm,
+		mode:        PositioningMode, // Default to Positioning Mode
 	}
 }
 
-// Pack method for RAMPMODE: packs the 2-bit value into a single byte
-func (r *RAMPMODE_Register) Pack() uint8 {
-	return r.Value & 0x03 // Mask to 2 bits
+// SetMode sets the mode of the RAMPMODE register
+func (r *RAMPMODE_Register) SetMode(mode RampMode) error {
+	r.mode = mode
+	registerValue := r.Pack()
+	return r.comm.WriteRegister(r.RegisterAddr, uint32(registerValue), r.driverIndex)
 }
 
-// Unpack method for RAMPMODE: unpacks the 2-bit value from a byte
+// GetMode returns the current mode of the RAMPMODE register
+func (r *RAMPMODE_Register) GetMode() (RampMode, error) {
+	registerValue, err := r.comm.ReadRegister(r.RegisterAddr, r.driverIndex)
+	if err != nil {
+		return 0, err //Defaults to Postioning Mode
+	}
+
+	// Unpack the register value to get the mode
+	r.Unpack(uint8(registerValue))
+	return r.mode, nil
+
+}
+
+// Pack method for RAMPMODE: packs the mode value into a single byte (now using enums)
+func (r *RAMPMODE_Register) Pack() uint8 {
+	return uint8(r.mode) // Simply cast the mode to uint8
+}
+
+// Unpack method for RAMPMODE: unpacks the mode value from a byte
 func (r *RAMPMODE_Register) Unpack(registerValue uint8) {
-	r.Value = registerValue & 0x03 // Mask to 2 bits
+	r.mode = RampMode(registerValue & 0x03) // Mask to 2 bits
+}
+
+// String method to display the mode as a string (useful for logging or debugging)
+func (r RampMode) String() string {
+	switch r {
+	case PositioningMode:
+		return "Positioning Mode"
+	case VelocityPositiveMode:
+		return "Velocity Mode (Positive VMAX)"
+	case VelocityNegativeMode:
+		return "Velocity Mode (Negative VMAX)"
+	case HoldMode:
+		return "Hold Mode"
+	default:
+		return "Unknown Mode"
+	}
 }
 
 // XACTUAL_Register struct for XACTUAL register (32 bits)
@@ -2018,7 +2067,7 @@ func calculateSineWaveTable() []int {
 	// Loop through each table index (i)
 	for i := 0; i < 256; i++ {
 		// Calculate the sine value and scale it by 248
-		sineValue := 248 * math.Sin(2*math.Pi*float64(i)/1024)
+		sineValue := 248 * math.Sin(2*math.Pi*float32(i)/1024)
 
 		// Round the result and subtract 1
 		roundedValue := int(math.Round(sineValue)) - 1
